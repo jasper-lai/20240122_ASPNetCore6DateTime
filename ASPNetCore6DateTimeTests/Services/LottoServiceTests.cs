@@ -11,7 +11,7 @@ namespace ASPNetCore6DateTime.Services.Tests
     public class LottoServiceTests
     {
         [TestMethod()]
-        public void Test_Lottoing_輸入亂數範圍_0_10_預期回傳_9_恭喜中獎()
+        public void Test_Lottoing_20240105_輸入亂數範圍_0_10_預期回傳_9_恭喜中獎()
         {
             // Arrange
             var expected = new LottoViewModel()
@@ -19,11 +19,14 @@ namespace ASPNetCore6DateTime.Services.Tests
                         .ToExpectedObject();
 
             int fixedValue = 9;
+            DateTime today = new(2024, 01, 05);
             var mockRandomGenerator = new Mock<IRandomGenerator>();
+            var mockDateTimeProvider = new Mock<IDateTimeProvider>();
             mockRandomGenerator.Setup(r => r.Next(It.IsAny<int>(), It.IsAny<int>())).Returns(fixedValue);
+            mockDateTimeProvider.Setup(d => d.GetCurrentTime()).Returns(today);
 
             // Act
-            var target = new LottoService(mockRandomGenerator.Object);
+            var target = new LottoService(mockRandomGenerator.Object, mockDateTimeProvider.Object);
             var actual = target.Lottoing(0, 10);
 
             // Assert
@@ -32,7 +35,7 @@ namespace ASPNetCore6DateTime.Services.Tests
 
 
         [TestMethod()]
-        public void Test_Lottoing_輸入亂數範圍_0_10_預期回傳_1_再接再厲()
+        public void Test_Lottoing_20240105_輸入亂數範圍_0_10_預期回傳_1_再接再厲()
         {
             // Arrange
             var expected = new LottoViewModel()
@@ -40,11 +43,14 @@ namespace ASPNetCore6DateTime.Services.Tests
                         .ToExpectedObject();
 
             int fixedValue = 1;
+            DateTime today = new(2024, 01, 05);
             var mockRandomGenerator = new Mock<IRandomGenerator>();
+            var mockDateTimeProvider = new Mock<IDateTimeProvider>();
             mockRandomGenerator.Setup(r => r.Next(It.IsAny<int>(), It.IsAny<int>())).Returns(fixedValue);
+            mockDateTimeProvider.Setup(d => d.GetCurrentTime()).Returns(today);
 
             // Act
-            var target = new LottoService(mockRandomGenerator.Object);
+            var target = new LottoService(mockRandomGenerator.Object, mockDateTimeProvider.Object);
             var actual = target.Lottoing(0, 10);
 
             // Assert

@@ -9,6 +9,7 @@ builder.Services.AddControllersWithViews();
 #region 註冊相關的服務
 builder.Services.AddSingleton<IRandomGenerator, RandomGenerator>();
 builder.Services.AddScoped<ILottoService, LottoService>();
+builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 #endregion
 
 var app = builder.Build();
