@@ -13,6 +13,24 @@ Unit Test for Static Elements (DateTime class) in ASP.NET Core 6 MVC
 
 ## 演練細節
 
+### 步驟_1: 加入 IDateTimeProvider 介面 及 DateTimeProvider 類別
+
+```csharp
+public interface IDateTimeProvider
+{
+    DateTime GetCurrentTime();
+}
+
+public class DateTimeProvider : IDateTimeProvider
+{
+    public DateTime GetCurrentTime()
+    {
+        return DateTime.Now;
+    }
+}
+```
+
+
 
 
 ## 結論
