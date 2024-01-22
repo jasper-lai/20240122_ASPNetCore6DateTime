@@ -11,7 +11,7 @@ namespace ASPNetCore6DateTime.Services.Tests
     public class LottoServiceTests
     {
         [TestMethod()]
-        public void Test_Lottoing_20240105_輸入亂數範圍_0_10_預期回傳_9_恭喜中獎()
+        public void Test_Lottoing_今天是20240105_輸入亂數範圍_0_10_預期回傳_9_恭喜中獎()
         {
             // Arrange
             var expected = new LottoViewModel()
@@ -35,7 +35,7 @@ namespace ASPNetCore6DateTime.Services.Tests
 
 
         [TestMethod()]
-        public void Test_Lottoing_20240105_輸入亂數範圍_0_10_預期回傳_1_再接再厲()
+        public void Test_Lottoing_今天是20240105_輸入亂數範圍_0_10_預期回傳_1_再接再厲()
         {
             // Arrange
             var expected = new LottoViewModel()
@@ -57,5 +57,28 @@ namespace ASPNetCore6DateTime.Services.Tests
             expected.ShouldEqual(actual);
         }
 
+
+        [TestMethod()]
+        public void Test_Lottoing_今天是20240122_輸入亂數範圍_0_10_預期回傳_負1_非每個月5日_不開獎()
+        {
+            // Arrange
+            var expected = new LottoViewModel()
+            { YourNumber = -1, Message = "非每個月5日, 不開獎" }
+                        .ToExpectedObject();
+
+            int fixedValue = 9;
+            DateTime today = new(2024, 01, 22);
+            var mockRandomGenerator = new Mock<IRandomGenerator>();
+            var mockDateTimeProvider = new Mock<IDateTimeProvider>();
+            mockRandomGenerator.Setup(r => r.Next(It.IsAny<int>(), It.IsAny<int>())).Returns(fixedValue);
+            mockDateTimeProvider.Setup(d => d.GetCurrentTime()).Returns(today);
+
+            // Act
+            var target = new LottoService(mockRandomGenerator.Object, mockDateTimeProvider.Object);
+            var actual = target.Lottoing(0, 10);
+
+            // Assert
+            expected.ShouldEqual(actual);
+        }
     }
 }

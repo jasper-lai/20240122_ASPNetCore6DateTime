@@ -1,15 +1,17 @@
-## 靜態元素 (Static Elements) 的單元測試, 以亂數 (DateTime) 為例
-Unit Test for Static Elements (DateTime class) in ASP.NET Core 6 MVC   
+## 靜態元素 (Static Elements) 的單元測試, 以 DateTime.Now 為例
+Unit Test for Static Elements (DateTime.Now) in ASP.NET Core 6 MVC   
 
 ## 前言
 
-接續前一篇 <a href="https://www.jasperstudy.com/2024/01/non-deterministic-elements-random.html" target="_blank">樂透開獎</a> 的例子, 假設有一個新的需求: "樂透開奬不是每天開, 而是固定每個月的 5 日開獎一次".  
-因此, 程式要加一個當前日期時間的判斷, 若為 5 日才可開獎. 若為其它日期, 就不可開獎, 回覆警告訊息.  
-這個邏輯要如何測試呢? 總不能等到每個月 5 日, 才來測試吧.  
+接續前一篇 <a href="https://www.jasperstudy.com/2024/01/non-deterministic-elements-random.html" target="_blank">樂透開獎</a> 的例子, 假設有一個新的需求: "樂透開奬不是每天開, 而是固定每個月的 5 日才會開獎".    
 
-以下係採 參考文件2.. 的 "An interface that wraps the DateTime.Now" 方式進行演練及實作.  
+因此, 程式要加一個當前日期時間的判斷.  
+* 若為 5 日才可開獎, 並回傳開獎的結果.  
+* 若為其它日期, 就不可開獎, 並回傳警告訊息.  
+這個邏輯要如何測試呢? 總不能等到每個月 5 日, 或者調整筆電的系統時間, 才來測試吧.  
 
-完整範例可由 GitHub 下載.
+以下係採 參考文件2.. "An interface that wraps the DateTime.Now" 方式進行演練及實作.  
+完整範例可由 GitHub 下載.  
 
 ## 演練細節
 
@@ -87,7 +89,7 @@ public LottoViewModel Lottoing(int min, int max)
 
 ```csharp
 [TestMethod()]
-public void Test_Lottoing_20240105_輸入亂數範圍_0_10_預期回傳_9_恭喜中獎()
+public void Test_Lottoing_今天是20240105_輸入亂數範圍_0_10_預期回傳_9_恭喜中獎()
 {
     // Arrange
     var expected = new LottoViewModel()
@@ -112,7 +114,7 @@ public void Test_Lottoing_20240105_輸入亂數範圍_0_10_預期回傳_9_恭喜
 
 ```csharp
 [TestMethod()]
-public void Test_Lottoing_20240105_輸入亂數範圍_0_10_預期回傳_1_再接再厲()
+public void Test_Lottoing_今天是20240105_輸入亂數範圍_0_10_預期回傳_1_再接再厲()
 {
     // Arrange
     var expected = new LottoViewModel()
@@ -137,11 +139,40 @@ public void Test_Lottoing_20240105_輸入亂數範圍_0_10_預期回傳_1_再接
 
 ### 步驟_5: 針對不開獎的日期, 建立測試案例
 
+```csharp
+[TestMethod()]
+public void Test_Lottoing_今天是20240122_輸入亂數範圍_0_10_預期回傳_負1_非每個月5日_不開獎()
+{
+    // Arrange
+    var expected = new LottoViewModel()
+    { YourNumber = -1, Message = "非每個月5日, 不開獎" }
+                .ToExpectedObject();
 
+    int fixedValue = 9;
+    DateTime today = new(2024, 01, 22);
+    var mockRandomGenerator = new Mock<IRandomGenerator>();
+    var mockDateTimeProvider = new Mock<IDateTimeProvider>();
+    mockRandomGenerator.Setup(r => r.Next(It.IsAny<int>(), It.IsAny<int>())).Returns(fixedValue);
+    mockDateTimeProvider.Setup(d => d.GetCurrentTime()).Returns(today);
+
+    // Act
+    var target = new LottoService(mockRandomGenerator.Object, mockDateTimeProvider.Object);
+    var actual = target.Lottoing(0, 10);
+
+    // Assert
+    expected.ShouldEqual(actual);
+}
+```
 
 ## 結論
 
- 
+DateTime 為 struct, DateTime.Now 為 static property, 在需要依當前日期時間作判斷的狀況下, 若直接呼叫 DateTime.Now, 將導致相依於 DateTime, 無法快速進行程式邏輯的測試.  
+故需以一個 interface 進行打包 (Wrap), 讓外界得以操作物件實體, 及其回傳值.  
+
+只是, 如同前一篇亂數範例所述的, 也會造成開發人員要習慣使用打包後的介面及類別, 這是比較美中不足的地方.  
+
+或許有更好的處理方式, 只是受限筆者的能力, 無法作到盡善盡美, 但至少可以供參考.  
+
 
 ## 參考文件
 
