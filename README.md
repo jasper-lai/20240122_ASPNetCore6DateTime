@@ -11,7 +11,10 @@ Unit Test for Static Elements (DateTime.Now) in ASP.NET Core 6 MVC
 這個邏輯要如何測試呢? 總不能等到每個月 5 日, 或者調整筆電的系統時間, 才來測試吧.  
 
 以下係採 參考文件2.. "An interface that wraps the DateTime.Now" 方式進行演練及實作.  
-完整範例可由 GitHub 下載.  
+
+<a href="https://github.com/jasper-lai/20240122_ASPNetCore6DateTime" target="_blank">完整範例可由 GitHub 下載.</a>
+
+<!--more-->
 
 ## 演練細節
 
@@ -163,6 +166,11 @@ public void Test_Lottoing_今天是20240122_輸入亂數範圍_0_10_預期回傳
     expected.ShouldEqual(actual);
 }
 ```
+
+### 步驟_6: 檢查測試的結果
+
+![TestResult](pictures/11-TestResult.png)  
+
 
 ## 結論
 

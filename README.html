@@ -1,0 +1,173 @@
+﻿<body>
+    <div style="font-size: medium;">
+        <!-- <h2 id="靜態元素-static-elements-的單元測試-以-datetimenow-為例">靜態元素 (Static Elements) 的單元測試, 以 DateTime.Now 為例</h2> -->
+        <p>Unit Test for Static Elements (DateTime.Now) in ASP.NET Core 6 MVC</p>
+        <h2 id="前言">前言</h2>
+        <p>接續前一篇 <a href="https://www.jasperstudy.com/2024/01/non-deterministic-elements-random.html" target="_blank">樂透開獎</a> 的例子, 假設有一個新的需求: &quot;樂透開奬不是每天開, 而是固定每個月的 5 日才會開獎&quot;.</p>
+        <p>因此, 程式要加一個當前日期時間的判斷.</p>
+        <ul>
+            <li>若為 5 日才可開獎, 並回傳開獎的結果.</li>
+            <li>若為其它日期, 就不可開獎, 並回傳警告訊息.<br />
+                這個邏輯要如何測試呢? 總不能等到每個月 5 日, 或者調整筆電的系統時間, 才來測試吧.</li>
+        </ul>
+        <p>以下係採 參考文件2.. &quot;An interface that wraps the DateTime.Now&quot; 方式進行演練及實作.</p>
+        <p><a href="https://github.com/jasper-lai/20240122_ASPNetCore6DateTime" target="_blank">完整範例可由 GitHub 下載.</a></p>
+        <!--more-->
+        <h2 id="演練細節">演練細節</h2>
+        <h3 id="步驟_1-加入-idatetimeprovider-介面-及-datetimeprovider-類別">步驟_1: 加入 IDateTimeProvider 介面 及 DateTimeProvider 類別</h3>
+        <pre><code class="language-csharp">public interface IDateTimeProvider
+{
+    DateTime GetCurrentTime();
+}
+
+public class DateTimeProvider : IDateTimeProvider
+{
+    public DateTime GetCurrentTime()
+    {
+        return DateTime.Now;
+    }
+}
+</code></pre>
+        <h3 id="步驟_2-將-idatetimeprovider-註冊至-di-container">步驟_2: 將 IDateTimeProvider 註冊至 DI container</h3>
+        <pre><code class="language-csharp">#region 註冊相關的服務
+builder.Services.AddSingleton&lt;IRandomGenerator, RandomGenerator&gt;();
+builder.Services.AddScoped&lt;ILottoService, LottoService&gt;();
+builder.Services.AddSingleton&lt;IDateTimeProvider, DateTimeProvider&gt;();
+#endregion
+</code></pre>
+        <h3 id="步驟_3-修改-lottoservice-的處理邏輯">步驟_3: 修改 LottoService 的處理邏輯</h3>
+        <p>1.. 修改建構子, 加入 IDateTimeProvider 物件的注入.</p>
+        <pre><code class="language-csharp">private readonly IRandomGenerator _randomGenerator;
+private readonly IDateTimeProvider _dateTimeProvider;
+
+public LottoService(IRandomGenerator randomGenerator, IDateTimeProvider dateTimeProvider) 
+{
+    _randomGenerator = randomGenerator;
+    _dateTimeProvider = dateTimeProvider;
+}
+</code></pre>
+        <p>2.. 修改 Lottoing() 方法, 加入是否為每個月 5 日的判斷.</p>
+        <pre><code class="language-csharp">public LottoViewModel Lottoing(int min, int max)
+{
+
+    var result = new LottoViewModel();
+    var now = _dateTimeProvider.GetCurrentTime();
+
+    if (now.Day != 5)
+    {
+        result.YourNumber = -1;
+        result.Message = &quot;非每個月5日, 不開獎&quot;;
+        return result;
+    }
+
+    // Random(min, max): 含下界, 不含上界
+    var yourNumber = _randomGenerator.Next(min, max);
+    // 只要餘數是 9, 就代表中獎
+    var message = (yourNumber % 10 == 9) ? &quot;恭喜中獎&quot; : &quot;再接再厲&quot;;
+
+    result.YourNumber = yourNumber;
+    result.Message = message;
+
+    return result;
+}
+</code></pre>
+        <h3 id="步驟_4-修改原有的測試案例">步驟_4: 修改原有的測試案例</h3>
+        <p>1.. 因為 LottoService 的建構子增加了 IDataTimeProvider 這個參數, 所以, 原有的測試案例, 也要跟著改, 不然會編譯失敗.</p>
+        <pre><code class="language-csharp">[TestMethod()]
+public void Test_Lottoing_今天是20240105_輸入亂數範圍_0_10_預期回傳_9_恭喜中獎()
+{
+    // Arrange
+    var expected = new LottoViewModel()
+    { YourNumber = 9, Message = &quot;恭喜中獎&quot; }
+                .ToExpectedObject();
+
+    int fixedValue = 9;
+    DateTime today = new(2024, 01, 05);
+    var mockRandomGenerator = new Mock&lt;IRandomGenerator&gt;();
+    var mockDateTimeProvider = new Mock&lt;IDateTimeProvider&gt;();
+    mockRandomGenerator.Setup(r =&gt; r.Next(It.IsAny&lt;int&gt;(), It.IsAny&lt;int&gt;())).Returns(fixedValue);
+    mockDateTimeProvider.Setup(d =&gt; d.GetCurrentTime()).Returns(today);
+
+    // Act
+    var target = new LottoService(mockRandomGenerator.Object, mockDateTimeProvider.Object);
+    var actual = target.Lottoing(0, 10);
+
+    // Assert
+    expected.ShouldEqual(actual);
+}
+</code></pre>
+        <pre><code class="language-csharp">[TestMethod()]
+public void Test_Lottoing_今天是20240105_輸入亂數範圍_0_10_預期回傳_1_再接再厲()
+{
+    // Arrange
+    var expected = new LottoViewModel()
+    { YourNumber = 1, Message = &quot;再接再厲&quot; }
+                .ToExpectedObject();
+
+    int fixedValue = 1;
+    DateTime today = new(2024, 01, 05);
+    var mockRandomGenerator = new Mock&lt;IRandomGenerator&gt;();
+    var mockDateTimeProvider = new Mock&lt;IDateTimeProvider&gt;();
+    mockRandomGenerator.Setup(r =&gt; r.Next(It.IsAny&lt;int&gt;(), It.IsAny&lt;int&gt;())).Returns(fixedValue);
+    mockDateTimeProvider.Setup(d =&gt; d.GetCurrentTime()).Returns(today);
+
+    // Act
+    var target = new LottoService(mockRandomGenerator.Object, mockDateTimeProvider.Object);
+    var actual = target.Lottoing(0, 10);
+
+    // Assert
+    expected.ShouldEqual(actual);
+}
+</code></pre>
+        <h3 id="步驟_5-針對不開獎的日期-建立測試案例">步驟_5: 針對不開獎的日期, 建立測試案例</h3>
+        <pre><code class="language-csharp">[TestMethod()]
+public void Test_Lottoing_今天是20240122_輸入亂數範圍_0_10_預期回傳_負1_非每個月5日_不開獎()
+{
+    // Arrange
+    var expected = new LottoViewModel()
+    { YourNumber = -1, Message = &quot;非每個月5日, 不開獎&quot; }
+                .ToExpectedObject();
+
+    int fixedValue = 9;
+    DateTime today = new(2024, 01, 22);
+    var mockRandomGenerator = new Mock&lt;IRandomGenerator&gt;();
+    var mockDateTimeProvider = new Mock&lt;IDateTimeProvider&gt;();
+    mockRandomGenerator.Setup(r =&gt; r.Next(It.IsAny&lt;int&gt;(), It.IsAny&lt;int&gt;())).Returns(fixedValue);
+    mockDateTimeProvider.Setup(d =&gt; d.GetCurrentTime()).Returns(today);
+
+    // Act
+    var target = new LottoService(mockRandomGenerator.Object, mockDateTimeProvider.Object);
+    var actual = target.Lottoing(0, 10);
+
+    // Assert
+    expected.ShouldEqual(actual);
+}
+</code></pre>
+        <h3 id="步驟_6-檢查測試的結果">步驟_6: 檢查測試的結果</h3>
+        <p><img src="https://github.com/jasper-lai/20240122_ASPNetCore6DateTime/blob/master/pictures/11-TestResult.png?raw=true" alt="TestResult" /></p>
+        <h2 id="結論">結論</h2>
+        <p>DateTime 為 struct, DateTime.Now 為 static property, 在需要依當前日期時間作判斷的狀況下, 若直接呼叫 DateTime.Now, 將導致相依於 DateTime, 無法快速進行程式邏輯的測試.<br />
+            故需以一個 interface 進行打包 (Wrap), 讓外界得以操作物件實體, 及其回傳值.</p>
+        <p>只是, 如同前一篇亂數範例所述的, 也會造成開發人員要習慣使用打包後的介面及類別, 這是比較美中不足的地方.</p>
+        <p>或許有更好的處理方式, 只是受限筆者的能力, 無法作到盡善盡美, 但至少可以供參考.</p>
+        <h2 id="參考文件">參考文件</h2>
+        <ul>
+            <li><a href="https://columns.chicken-house.net/2022/05/29/datetime-mock/" target="_blank">1.. (安德魯的部落格) [架構師的修練] - 從 DateTime 的 Mock 技巧談 PoC 的應用</a></li>
+            <li><a href="https://methodpoet.com/unit-testing-datetime-now/" target="_blank">2.. 4 Golden Strategies for Unit Testing DateTime.Now in C#</a></li>
+        </ul>
+        <blockquote>
+            <p>The most popular strategies for unit testing DateTime.Now in C# are:</p>
+            <ul>
+                <li>An interface that wraps the DateTime.Now</li>
+                <li>SystemTime static class</li>
+                <li>Ambient context approach</li>
+                <li>DateTime property on a class</li>
+            </ul>
+        </blockquote>
+        <ul>
+            <li><a href="https://learn.microsoft.com/en-us/dotnet/api/system.datetime?view=net-6.0" target="_blank">3.. (Microsoft Learn) DateTime Struct</a></li>
+            <li><a href="https://learn.microsoft.com/en-us/dotnet/api/system.datetime.today?view=net-6.0" target="_blank">4.. (Microsoft Learn) DateTime.Today Property</a></li>
+            <li><a href="https://learn.microsoft.com/en-us/dotnet/api/system.datetime.now?view=net-6.0" target="_blank">5.. (Microsoft Learn) DateTime.Now Property</a></li>
+        </ul>
+    </div>
+</body>
